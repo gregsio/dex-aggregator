@@ -1,5 +1,7 @@
-const { expect } = require('chai');
+const { expect } = require("chai")
 const { ethers } = require('hardhat');
+
+const config = require("../config.json")
 
 const tokens = (n) => {
   return ethers.parseUnits(n.toString(), 'ether')
@@ -7,134 +9,113 @@ const tokens = (n) => {
 
 const ether = tokens
 
-describe('Aggregator', () => {
-  let accounts,
-      deployer,
-      liquidityProvider,
-      investor1,
-      investor2
+const ERC20 = require("@openzeppelin/contracts/build/contracts/ERC20.json");
 
-  let token1,
-      token2,
-      amm1,
-      amm2,
-      aggregator
+
+describe("Aggregator", () => {
+  let owner
+  let aggregator
+
+  let USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+  let WBTC = '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599'
+
+  let DAI = '0x6B175474E89094C44Da98b954EedeAC495271d0F'
 
   beforeEach(async () => {
-    // Setup Accounts
-    accounts = await ethers.getSigners()
-    deployer = accounts[0]
-    liquidityProvider = accounts[1]
-    investor1 = accounts[2]
-    investor2 = accounts[3]
 
-    // Deploy Token
-    const Token = await ethers.getContractFactory('Token')
-    token1 = await Token.deploy('Gregs dApp', 'DAPP', '1000000') // 1 Million Tokens
-    token2 = await Token.deploy('USD Token', 'USD', '1000000') // 1 Million Tokens
+    const patricio_address = "0x57757E3D981446D585Af0D9Ae4d7DF6D64647806"
 
-    // Send tokens to liquidity provider
-    let transaction = await token1.connect(deployer).transfer(liquidityProvider.address, tokens(100000))
-    await transaction.wait()
+    //  impersonating account
+    await network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [patricio_address],
+    });
 
-    transaction = await token2.connect(deployer).transfer(liquidityProvider.address, tokens(100000))
-    await transaction.wait()
+     investor1 = await ethers.getSigner(patricio_address);
+    //
 
-    // Send token1 to investor1
-    transaction = await token1.connect(deployer).transfer(investor1.address, tokens(100000))
-    await transaction.wait()
+    [owner] = await ethers.getSigners()
 
-    // Send token2 to investor2
-    transaction = await token2.connect(deployer).transfer(investor2.address, tokens(100000))
-    await transaction.wait()
+    aggregator = await hre.ethers.deployContract(
+      "Aggregator",
+      [
+        config.SUSHISWAP.V2_ROUTER_02_ADDRESS,
+        config.UNISWAP.V2_ROUTER_02_ADDRESS,
+        1
+      ]
+    )
 
-    // Deploy AMM1
-    const AMM1 = await ethers.getContractFactory('AMM')
-    amm1 = await AMM1.deploy(token1, token2)
-
-    // Deploy AMM2
-    const AMM2 = await ethers.getContractFactory('AMM')
-    amm2 = await AMM2.deploy(token1, token2)
-
-    // Deploy Aggregator
-    const Aggregator = await ethers.getContractFactory('Aggregator')
-    aggregator = await Aggregator.deploy(amm1, amm2, token1, token2)
-
-    // Deployer approves 100k tokens
-    amount = tokens(100000)
-
-    transaction = await token1.connect(deployer).approve(amm1.target, amount)
-    await transaction.wait()
-
-    transaction = await token1.connect(deployer).approve(amm2.target, amount)
-    await transaction.wait()
-
-
-    transaction = await token2.connect(deployer).approve(amm1.target, amount)
-    await transaction.wait()
-
-    transaction = await token2.connect(deployer).approve(amm2.target, amount)
-    await transaction.wait()
-
-    // Deployer adds liquidity to amm1
-    transaction = await amm1.connect(deployer).addLiquidity(amount, amount)
-    await transaction.wait()
-
-    // Deployer adds liquidity to amm2
-    transaction = await amm2.connect(deployer).addLiquidity(amount, amount)
-    await transaction.wait()
-
-    // Investor1 Approve tokens to AMM1
-    transaction = await token1.connect(investor1).approve(amm1, tokens(100000))
-    await transaction.wait()
-
-    // Investor2 approves all tokens
-    transaction = await token2.connect(investor2).approve(amm2, tokens(100000))
-    await transaction.wait()
+    await aggregator.waitForDeployment()
+    console.log(`Aggregator contract deployed to ${await aggregator.getAddress()}`)
 
   })
 
-  describe('Deployment', () => {
-
-    it('has an address', async () => {
-      expect(amm1.target).to.not.equal(0x0)
-      expect(amm2.target).to.not.equal(0x0)
-      expect(aggregator.target).to.not.equal(0x0)
+  describe("Deployment", () => {
+    it("Sets the sRouter", async () => {
+      expect(await aggregator.sRouter()).to.equal(config.SUSHISWAP.V2_ROUTER_02_ADDRESS)
     })
 
-    it('tracks token1 address', async () => {
-      //console.log(aggregator.amm1)
-      expect(await aggregator.token1()).to.equal(await amm1.token1())
-      expect(await aggregator.token1()).to.equal(await amm2.token1())
+    it("Sets the uRouter", async () => {
+      expect(await aggregator.uRouter()).to.equal(config.UNISWAP.V2_ROUTER_02_ADDRESS)
     })
 
-    it('tracks token2 address', async () => {
-      expect(await aggregator.token2()).to.equal(await amm1.token2())
-      expect(await aggregator.token1()).to.equal(await amm2.token1())
+    it("Sets the owner", async () => {
+      expect(await aggregator.owner()).to.equal(await owner.getAddress())
     })
   })
 
-  describe('Aggregator', () => {
+ describe('Aggregates routes from several DEXs', () => {
 
     it('Returns the best route', async () => {
+        //WETH = await aggregator.WETH()
+        const WETH = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
+        path = [WETH, DAI]
 
-        // Investor1 swaps 150 token1 on AMM1
-        transaction = await amm1.connect(investor1).swapToken1(tokens(150))
+
+        //console.log(path)
+        amountOut = await aggregator.connect(investor1)
+          .getBestAmountsOutOnUniswapForks(
+            path,
+            tokens(1000)
+          )
+       console.log('Best Swap: ', amountOut)
+
+        let weth
+        weth = new hre.ethers.Contract(WETH,ERC20.abi,investor1);
+
+        transaction = await weth.connect(investor1).approve(aggregator, tokens(10000))
         result = await transaction.wait()
+        //console.log(result)
 
-        // Investor1 swaps 150 token2 on AMM1
-        transaction = await amm2.connect(investor2).swapToken2(tokens(150))
+        // transaction = await investor1.sendTransaction({from:investor1.getAddress(), to:aggregator.target, value: ether(1)});
+        // result = await transaction.wait()
+        // console.log(result)
+
+        transaction = await aggregator.connect(investor1)
+          .swapOnUniswap(
+              path,
+              tokens(1000),
+              amountOut[0],
+            )
         result = await transaction.wait()
-        bestRoute = await aggregator.fetchBestRoute(token1.target,tokens(10000))
+        //console.log(result)
 
-        expect(bestRoute[1]).to.equal('0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575')
+        amountOut = await aggregator.connect(investor1)
+        .getBestAmountsOutOnUniswapForks(
+          path,
+          tokens(1000)
+        )
+        console.log('Best Swap: ', amountOut)
 
-        // Investor1 swaps 20000 token2 on AMM2
-        transaction = await amm2.connect(investor2).swapToken2(tokens(20000))
-        result = await transaction.wait()
-        bestRoute = await aggregator.fetchBestRoute(token2.target,tokens(10000))
+        transaction = await aggregator.connect(investor1)
+        .swapOnSushiswap(
+            path,
+            tokens(1000),
+            amountOut[0],
+          )
+      result = await transaction.wait()
 
-        expect(bestRoute[1]).to.equal('0x5f3f1dBD7B74C6B46e8c44f98792A1dAf8d69154')
      })
   })
+
 })
