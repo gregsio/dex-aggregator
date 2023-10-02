@@ -186,6 +186,41 @@ describe("Aggregator", () => {
 
     })
 
+    it('Emits Swap events', async () => {
+
+      DAIBalanceBeforeSwap = await dai.balanceOf(investor1)
+
+      transaction = await weth.connect(investor1).approve(aggregator, tokens(10))
+      transaction.wait()
+
+      //Get best deal
+      amountOut = await aggregator.connect(investor1)
+      .getBestAmountsOutOnUniswapForks(
+        path,
+        tokens(10)
+      )
+     // Swap tokens
+      transaction = await aggregator.connect(investor1)
+      .swapOnUniswapFork(
+          path,
+          amountOut[1],  //best router address
+          tokens(10),
+          amountOut[0],  //best deal
+          0,
+          DEADLINE
+        )
+
+      result = await transaction.wait()
+        
+      expect(transaction).to.emit(aggregator, "Swap")
+      .withArgs(
+        amountOut[1], // router address
+        path,
+        tokens(10),
+        investor1.getAddress()
+        )
+
+    })
 
   })
 })

@@ -66,15 +66,21 @@ contract Aggregator {
             deadline
         );
 
+        emit Swap(
+            _routerAddress,
+            _path,
+            _amountIn,
+            msg.sender
+        );
     }
 
-    event TransactionCompleted(
-        address _from
+    event Swap (
+        address router,
+        address[] _path,
+        uint256 amount_from,
+        address to
     );
 
-    event TransactionStarted(
-        address _from
-    );
     /// @notice Find the best deal for swapping tokens on Uniswap, Sushiswap or other forks
     /// @dev _path can have several pairs,
     /// @param _path An array of token addresses. path.length must be >= 2.
