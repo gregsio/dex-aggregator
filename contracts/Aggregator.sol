@@ -12,10 +12,10 @@ contract Aggregator {
 
     address public owner;
     uint256 defaultSlippagePercent ;
-    address[] public routers;
+    address[] public whiteListedRouters;
 
     constructor(address[] memory _routers, uint16 _defaultSlippagePercent) {
-        routers = _routers;
+        whiteListedRouters = _routers;
         owner = msg.sender;
         defaultSlippagePercent = _defaultSlippagePercent;
     }
@@ -30,12 +30,13 @@ contract Aggregator {
     /// @param _maxSlippagePercent The maximum slippage percentage allowed by the transaction
 
     function swapOnUniswapFork(
-        address[] memory _path,
+        address[] calldata _path,
         address _routerAddress,
         uint256 _amountIn,
         uint256 _minAmountOutBeforeSlippage,
-        uint256 _maxSlippagePercent
-    ) public validRouter(_routerAddress) {
+        uint256 _maxSlippagePercent,
+        uint256 deadline
+    ) public  validRouter(_routerAddress){
 
         require (
             IERC20(_path[0]).balanceOf(msg.sender) > _amountIn,
@@ -50,18 +51,30 @@ contract Aggregator {
             "Router approval failed."
         );
 
-        uint256 slippage = SafeMath.div(SafeMath.mul(_minAmountOutBeforeSlippage , _maxSlippagePercent), 100);
-        uint256 minAmountOut= SafeMath.sub(_minAmountOutBeforeSlippage, slippage);
-        IUniswapV2Router02(_routerAddress).swapExactTokensForTokens(
+        uint256 slippage = SafeMath.div(
+            SafeMath.mul(_minAmountOutBeforeSlippage , _maxSlippagePercent),
+            1000
+            );
+        uint256 minAmountOut = SafeMath.sub(_minAmountOutBeforeSlippage, slippage);
+
+        IUniswapV2Router02(_routerAddress)
+        .swapExactTokensForTokens(
             _amountIn,
             minAmountOut,
             _path,
-            address(this),
-            (block.timestamp + 1200)
+            address(msg.sender),
+            deadline
         );
+
     }
 
+    event TransactionCompleted(
+        address _from
+    );
 
+    event TransactionStarted(
+        address _from
+    );
     /// @notice Find the best deal for swapping tokens on Uniswap, Sushiswap or other forks
     /// @dev _path can have several pairs,
     /// @param _path An array of token addresses. path.length must be >= 2.
@@ -75,11 +88,11 @@ contract Aggregator {
         uint256[] memory amountOut;
         uint8 i = 0;
         uint lastHop = _path.length -1;
-        for (i=0; i < routers.length; i++){
-                amountOut = IUniswapV2Router02(routers[i]).getAmountsOut(_amount, _path);
+        for (i=0; i < whiteListedRouters.length; i++){
+                amountOut = IUniswapV2Router02(whiteListedRouters[i]).getAmountsOut(_amount, _path);
                 if (amountOut[lastHop] > bestAmountOut){
                     bestAmountOut = amountOut[lastHop];
-                    bestRouter = routers[i];
+                    bestRouter = whiteListedRouters[i];
                 }
         }
     }
@@ -87,8 +100,8 @@ contract Aggregator {
     modifier validRouter(address routerAddress){
         uint8 i;
         bool isWhiteListedRouter = false;
-        for (i=0; i < routers.length; i++){
-            if (routers[i] == routerAddress){
+        for (i=0; i < whiteListedRouters.length; i++){
+            if (whiteListedRouters[i] == routerAddress){
                 isWhiteListedRouter = true;
                 break;
             }
