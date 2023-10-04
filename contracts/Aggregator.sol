@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 pragma solidity 0.8.18;
 
@@ -9,9 +9,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "hardhat/console.sol";
 
 contract Aggregator {
-
     address public owner;
-    uint256 defaultSlippagePercent ;
+    uint256 defaultSlippagePercent;
     address[] public whiteListedRouters;
 
     constructor(address[] memory _routers, uint16 _defaultSlippagePercent) {
@@ -19,7 +18,6 @@ contract Aggregator {
         owner = msg.sender;
         defaultSlippagePercent = _defaultSlippagePercent;
     }
-
 
     /// @notice Swap tokens on Uniswap, Sushiswap or other forks
     /// @dev _path can have several pairs
@@ -36,15 +34,14 @@ contract Aggregator {
         uint256 _minAmountOutBeforeSlippage,
         uint256 _maxSlippagePercent,
         uint256 deadline
-    ) public  validRouter(_routerAddress){
-
-        require (
+    ) public validRouter(_routerAddress) {
+        require(
             IERC20(_path[0]).balanceOf(msg.sender) > _amountIn,
-            'not enough tokens available'
+            "not enough tokens available"
         );
         require(
             IERC20(_path[0]).transferFrom(msg.sender, address(this), _amountIn),
-            'transferFrom failed.'
+            "transferFrom failed."
         );
         require(
             IERC20(_path[0]).approve(_routerAddress, _amountIn),
@@ -52,13 +49,15 @@ contract Aggregator {
         );
 
         uint256 slippage = SafeMath.div(
-            SafeMath.mul(_minAmountOutBeforeSlippage , _maxSlippagePercent),
+            SafeMath.mul(_minAmountOutBeforeSlippage, _maxSlippagePercent),
             1000
-            );
-        uint256 minAmountOut = SafeMath.sub(_minAmountOutBeforeSlippage, slippage);
+        );
+        uint256 minAmountOut = SafeMath.sub(
+            _minAmountOutBeforeSlippage,
+            slippage
+        );
 
-        IUniswapV2Router02(_routerAddress)
-        .swapExactTokensForTokens(
+        IUniswapV2Router02(_routerAddress).swapExactTokensForTokens(
             _amountIn,
             minAmountOut,
             _path,
@@ -66,15 +65,10 @@ contract Aggregator {
             deadline
         );
 
-        emit Swap(
-            _routerAddress,
-            _path,
-            _amountIn,
-            msg.sender
-        );
+        emit Swap(_routerAddress, _path, _amountIn, msg.sender);
     }
 
-    event Swap (
+    event Swap(
         address router,
         address[] _path,
         uint256 amount_from,
@@ -89,33 +83,38 @@ contract Aggregator {
     function getBestAmountsOutOnUniswapForks(
         address[] memory _path,
         uint256 _amount
-    ) public view returns (uint256 bestAmountOut, address bestRouter){
+    ) public view returns (uint256 bestAmountOut, address bestRouter) {
+        if (_amount == 0) {
+            bestAmountOut = 0;
+            bestRouter = address(0);
+            return (bestAmountOut, bestRouter);
+        }
 
         uint256[] memory amountOut;
         uint8 i = 0;
-        uint lastHop = _path.length -1;
-        for (i=0; i < whiteListedRouters.length; i++){
-                amountOut = IUniswapV2Router02(whiteListedRouters[i]).getAmountsOut(_amount, _path);
-                if (amountOut[lastHop] > bestAmountOut){
-                    bestAmountOut = amountOut[lastHop];
-                    bestRouter = whiteListedRouters[i];
-                }
+        uint lastHop = _path.length - 1;
+        for (i = 0; i < whiteListedRouters.length; i++) {
+            amountOut = IUniswapV2Router02(whiteListedRouters[i]).getAmountsOut(
+                    _amount,
+                    _path
+                );
+            if (amountOut[lastHop] > bestAmountOut) {
+                bestAmountOut = amountOut[lastHop];
+                bestRouter = whiteListedRouters[i];
+            }
         }
     }
 
-    modifier validRouter(address routerAddress){
+    modifier validRouter(address routerAddress) {
         uint8 i;
         bool isWhiteListedRouter = false;
-        for (i=0; i < whiteListedRouters.length; i++){
-            if (whiteListedRouters[i] == routerAddress){
+        for (i = 0; i < whiteListedRouters.length; i++) {
+            if (whiteListedRouters[i] == routerAddress) {
                 isWhiteListedRouter = true;
                 break;
             }
         }
-        require(
-            isWhiteListedRouter,
-            'Router must be whitelisted'
-            );
+        require(isWhiteListedRouter, "Router must be whitelisted");
         _;
     }
 }
