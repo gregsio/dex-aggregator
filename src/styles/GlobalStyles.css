@@ -1,0 +1,48 @@
+/* GlobalStyles.css*/
+
+.alert {
+  max-width: 300px;
+  position: absolute;
+  bottom: 100px;
+  right: 100px;
+  padding: 50px;
+}
+
+body {
+  background-color: #F7F8FA; /* You can choose any color, this is a light gray-ish color similar to Uniswap's background color */
+  font-family: 'Inter', sans-serif; /* Uniswap uses the Inter font. You might need to import it from Google Fonts or another source. */
+  margin: 0;
+  padding: 0;
+}
+
+
+html, body, div, span, h1, h2, h3, h4, h5, h6, p, a, ul, li, form, label {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 100%;
+  vertical-align: baseline;
+  box-sizing: border-box;
+}
+
+
+/* button {
+  background-color: #e521b4;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 12px;
+  padding: 10px 20px;
+} */
+
+input, select, textarea {
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid #E1E1E1;
+}
+
+hr {
+  border-top: 1px solid #e521b4;
+  margin: 0;
+  padding: 0;
+}

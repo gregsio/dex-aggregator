@@ -1,0 +1,101 @@
+/* Theme.module.css */
+.primaryBackground {
+    background-color: #1E1F2E;
+}
+
+.primaryTextColor {
+    color: #E0077A;
+}
+
+.secondaryBackground {
+    background-color: #E0077A;
+}
+
+.secondaryTextColor {
+    color: #1E1F2E;
+}
+/* Theme.module.css */
+
+.customNavbar {
+    background-color: #2b1c29;
+    padding: 10px 25px;
+}
+
+.navBrand {
+    display: flex;
+    align-items: center;
+}
+
+.navLogo {
+    margin-right: 15px; /* Space between the logo and the text */
+}
+
+.navTitle {
+    font-size: 1.5em; /* Slightly bigger font size */
+    font-weight: 700; /* Bold font weight */
+    color: #fff; /* White text color for contrast */
+}
+
+.networkSelector {
+    width: 150px; /* Set a fixed width */
+    border-radius: 8px;
+    background-color: #2D2D3F;
+    color: #fff;
+    border: none;
+    margin-right: 20px;
+}
+
+.networkSelector:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.connectBtn {
+    background-color: #007bbf;
+    border: none;
+    border-radius: 10px;
+    padding: 8px 20px;
+    color: #fff;
+    font-weight: 600; /* Make the text bold */
+}
+
+.connectBtn:hover {
+    background: linear-gradient(90deg, rgb(183, 186, 189) 0%, #E0077A 100%);
+
+}
+
+.accountInfo {
+    display: flex;
+    align-items: center;
+    color: #fff;
+    font-weight: 600; /* Bold text for readability */
+}
+
+.identicon {
+    margin-right: 10px;
+}
+
+
+
+.tabLink {
+    padding: 10px 20px;
+    border-radius: 20px;
+    text-decoration: none;
+    color: white;
+    /* background: linear-gradient(90deg, rgb(183, 186, 189) 0%, rgba(41,105,205,1) 100%); */
+}
+
+.tabLink:hover {
+    color: #E0077A;
+}
+
+
+.active {
+    font-weight: bold;
+    color: #E0077A !important;
+}
+
+.tabContainer .navbar-nav .nav-link.active {
+    font-weight: bold;
+    color: #E0077A !important;
+}
