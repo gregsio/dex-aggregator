@@ -16,14 +16,14 @@ body {
 }
 
 
-html, body, div, span, h1, h2, h3, h4, h5, h6, p, a, ul, li, form, label {
+/* html, body, div, span, h1, h2, h3, h4, h5, h6, p, a, ul, li, form, label {
   margin: 0;
   padding: 0;
   border: 0;
   font-size: 100%;
   vertical-align: baseline;
   box-sizing: border-box;
-}
+} */
 
 
 /* button {
