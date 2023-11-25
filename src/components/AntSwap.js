@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { Input, Popover, Radio, Modal, message } from "antd";
 import {
   ArrowDownOutlined,
@@ -7,6 +7,14 @@ import {
 } from "@ant-design/icons";
 import tokenList from "../tokenList.json";
 
+import { useSelector, useDispatch } from "react-redux";
+import Dropdown from "react-bootstrap/Dropdown";
+import Spinner from "react-bootstrap/Spinner";
+import { ethers } from "ethers";
+import Alert from "./Alert";
+import { swap, loadAccount } from "../store/interactions";
+import { ContractsContext } from "./ContractContext";
+
 
 import {
   Container,
@@ -14,14 +22,44 @@ import {
 } from "../styles/StyledComponents";
 
 
-function Swap(props) {
+const Swap = () => {
+  // begin variables added from Swap.js
+
+  console.log("Swap component re-rendered");
+  const contracts = useContext(ContractsContext);
+  const [inputAmount, setInputAmount] = useState(0);
+  const [outputAmount, setOutputAmount] = useState(0);
+  const [bestDeal, setBestDeal] = useState(null);
+  const [router, setRouter] = useState(null);
+  const [path, setPath] = useState([]);
+  const [price, setPrice] = useState(0);
+  const [showAlert, setShowAlert] = useState(false);
+
+  const provider = useSelector((state) => state.provider.connection);
+  const account = useSelector((state) => state.provider.account);
+  const isSwapping = useSelector(
+    (state) => state.aggregator.swapping.isSwapping
+  );
+  const isSuccess = useSelector((state) => state.aggregator.swapping.isSuccess);
+  const transactionHash = useSelector(
+    (state) => state.aggregator.swapping.transactionHash
+  );
+
+  const symbols = useSelector((state) => state.tokens.symbols);
+  // const balances = useSelector(state => state.tokens.balances)
+  const dispatch = useDispatch();
+
+  const connectHandler = async () => {
+    await loadAccount(dispatch);
+  };
+// end variables added from Swap.js
+
+
 //   const { address, isConnected } = props;
 //   const [messageApi, contextHolder] = message.useMessage();
   const [slippage, setSlippage] = useState(2.5);
-  const [tokenOneAmount, setTokenOneAmount] = useState(null);
-  const [tokenTwoAmount, setTokenTwoAmount] = useState(null);
-  const [tokenOne, setTokenOne] = useState(tokenList[0]);
-  const [tokenTwo, setTokenTwo] = useState(tokenList[1]);
+  const [inputToken, setInputToken] = useState(tokenList[0]);
+  const [outputToken, setOutputToken] = useState(tokenList[1]);
   const [isOpen, setIsOpen] = useState(false);
   const [changeToken, setChangeToken] = useState(1);
   const [prices, setPrices] = useState(null);
@@ -51,20 +89,20 @@ function Swap(props) {
 //   function changeAmount(e) {
 //     setTokenOneAmount(e.target.value);
 //     if(e.target.value && prices){
-//       setTokenTwoAmount((e.target.value * prices.ratio).toFixed(2))
+//       setOutputAmount((e.target.value * prices.ratio).toFixed(2))
 //     }else{
-//       setTokenTwoAmount(null);
+//       setOutputAmount(null);
 //     }
 //   }
 
   function switchTokens() {
     setPrices(null);
-    setTokenOneAmount(null);
-    setTokenTwoAmount(null);
-    const one = tokenOne;
-    const two = tokenTwo;
-    setTokenOne(two);
-    setTokenTwo(one);
+    setInputAmount(null);
+    setOutputAmount(null);
+    const input = inputToken;
+    const output = outputToken;
+    setInputToken(output);
+    setOutputToken(input);
     // fetchPrices(two.address, one.address);
   }
 
@@ -75,14 +113,14 @@ function Swap(props) {
 
   function modifyToken(i){
     setPrices(null);
-    setTokenOneAmount(null);
-    setTokenTwoAmount(null);
+    setInputAmount(null);
+    setOutputAmount(null);
     if (changeToken === 1) {
-      setTokenOne(tokenList[i]);
-     // fetchPrices(tokenList[i].address, tokenTwo.address)
+      setInputToken(tokenList[i]);
+     // fetchPrices(tokenList[i].address, outputToken.address)
     } else {
-      setTokenTwo(tokenList[i]);
-     // fetchPrices(tokenOne.address, tokenList[i].address)
+      setOutputToken(tokenList[i]);
+     // fetchPrices(inputToken.address, tokenList[i].address)
     }
     setIsOpen(false);
   }
@@ -99,11 +137,11 @@ function Swap(props) {
 
 //   async function fetchDexSwap(){
 
-//     const allowance = await axios.get(`https://api.1inch.io/v5.0/1/approve/allowance?tokenAddress=${tokenOne.address}&walletAddress=${address}`)
+//     const allowance = await axios.get(`https://api.1inch.io/v5.0/1/approve/allowance?tokenAddress=${inputToken.address}&walletAddress=${address}`)
 
 //     if(allowance.data.allowance === "0"){
 
-//       const approve = await axios.get(`https://api.1inch.io/v5.0/1/approve/transaction?tokenAddress=${tokenOne.address}`)
+//       const approve = await axios.get(`https://api.1inch.io/v5.0/1/approve/transaction?tokenAddress=${inputToken.address}`)
 
 //       setTxDetails(approve.data);
 //       console.log("not approved")
@@ -112,11 +150,11 @@ function Swap(props) {
 //     }
 
 //     const tx = await axios.get(
-//       `https://api.1inch.io/v5.0/1/swap?fromTokenAddress=${tokenOne.address}&toTokenAddress=${tokenTwo.address}&amount=${tokenOneAmount.padEnd(tokenOne.decimals+tokenOneAmount.length, '0')}&fromAddress=${address}&slippage=${slippage}`
+//       `https://api.1inch.io/v5.0/1/swap?fromTokenAddress=${inputToken.address}&toTokenAddress=${outputToken.address}&amount=${inputTokenAmount.padEnd(inputToken.decimals+inputTokenAmount.length, '0')}&fromAddress=${address}&slippage=${slippage}`
 //     )
 
-//     let decimals = Number(`1E${tokenTwo.decimals}`)
-//     setTokenTwoAmount((Number(tx.data.toTokenAmount)/decimals).toFixed(2));
+//     let decimals = Number(`1E${outputToken.decimals}`)
+//     setOutputAmount((Number(tx.data.toTokenAmount)/decimals).toFixed(2));
 
 //     setTxDetails(tx.data.tx);
 
@@ -170,6 +208,56 @@ function Swap(props) {
 //   },[isSuccess])
 
 
+  const getPrice = async () => {
+    console.log("getPrice/inputAmount", inputAmount);
+    if (inputToken === outputToken) {
+      setPrice(0);
+    }
+    if (inputAmount === "0") {
+      setPrice("N/A");
+      return;
+    }
+
+    if (outputAmount && inputAmount) {
+      const price = Number(bestDeal) / Number(inputAmount);
+      setPrice(price.toString());
+    }
+  };
+
+  const handleInputChange = async (e) => {
+    console.log("handleInputChange triggered"); // Log when the function is triggered
+
+    if (!e.target.value) {
+      setOutputAmount("0");
+      setInputAmount("0");
+      console.log("No input value provided"); // Log if no input value is provided
+      return;
+    }
+    const enteredAmount = ethers.parseEther(e.target.value.toString());
+    console.log("Entered amount:", enteredAmount.toString()); // Log the entered amount
+
+    // Set the input amount
+    setInputAmount(enteredAmount.toString());
+
+    // Check to make sure the tokens are set before attempting to convert
+    if (!inputToken || !outputToken) {
+      alert("Please select both input and output tokens.");
+      console.log("Input or output token not selected"); // Log if tokens are not selected
+      return;
+    }
+
+    // Ensure the input token isn't the same as the output token
+    if (inputToken === outputToken) {
+      alert("Input and output tokens cannot be the same");
+      console.log("Input and output tokens are the same"); // Log if input and output tokens are the same
+      return;
+    }
+
+    // The logic for setting the path and fetching the best deal
+    // has been moved to useEffect hooks.
+  };
+
+
   const settings = (
     <>
       <div>Slippage Tolerance</div>
@@ -183,6 +271,52 @@ function Swap(props) {
       </div>
     </>
   );
+
+  // Effect to update the path whenever inputToken or outputToken changes
+  useEffect(() => {
+    if (inputToken && outputToken && inputToken !== outputToken) {
+    //  setPath([symbols.get(inputToken), symbols.get(outputToken)]);
+    setPath([inputToken.address, outputToken.address]);
+
+    }
+    if (inputToken && outputToken && inputToken === outputToken) {
+      setPath([]);
+    }
+  }, [inputToken, outputToken, symbols]);
+
+
+  // Effect to call getBestAmountsOutOnUniswapForks whenever path or inputAmount changes
+  useEffect(() => {
+    const fetchBestDeal = async () => {
+      if (path.length === 2 && inputAmount) {
+        // try {
+        const fetchBestDealResult =
+          await contracts.aggregator.getBestAmountsOutOnUniswapForks(
+            path,
+            inputAmount
+          );
+        console.log("fetchBestDealResult:", fetchBestDealResult);
+        setBestDeal(fetchBestDealResult[0]);
+        setRouter(fetchBestDealResult[1]);
+
+        // Set the output amount
+        let calculatedOutputAmount = ethers.formatUnits(fetchBestDealResult[0],18); // Convert the result to a human-readable format
+        setOutputAmount(parseFloat(calculatedOutputAmount).toFixed(2)); // Update the outputAmount state
+
+        // } catch (error) {
+        //     console.error('Error fetching best deal:', error);
+        // }
+      } else {
+        console.log("path.length/inputAmout", path.length, inputAmount);
+      }
+    };
+    fetchBestDeal();
+  }, [path, inputAmount, contracts.aggregator]);
+
+  useEffect(() => {
+    getPrice();
+  }, [inputAmount, inputToken, outputToken, bestDeal]); 
+
 
   return (
     <Container>
@@ -225,26 +359,28 @@ function Swap(props) {
         <div className="inputs">
           <Input
             // placeholder="0"
-            // value={tokenOneAmount}
+            // value={inputTokenAmount}
             // onChange={changeAmount}
+            onChange={handleInputChange}
+
             // disabled={!prices}
           />
-          <Input placeholder="0" value={tokenTwoAmount} disabled={true} />
+          <Input placeholder="0" value={outputAmount} disabled={true} />
           <div className="switchButton" onClick={switchTokens}>
             <ArrowDownOutlined className="switchArrow" />
           </div>
           <div className="assetOne" onClick={() => openModal(1)}>
-            <img src={tokenOne.img} alt="assetOneLogo" className="assetLogo" />
-            {tokenOne.ticker}
+            <img src={inputToken.img} alt="assetOneLogo" className="assetLogo" />
+            {inputToken.ticker}
             <DownOutlined />
           </div>
           <div className="assetTwo" onClick={() => openModal(2)}>
-            <img src={tokenTwo.img} alt="assetOneLogo" className="assetLogo" />
-            {tokenTwo.ticker}
+            <img src={outputToken.img} alt="assetOneLogo" className="assetLogo" />
+            {outputToken.ticker}
             <DownOutlined />
           </div>
         </div>
-        {/* <div className="swapButton" disabled={!tokenOneAmount || !isConnected} onClick={fetchDexSwap}>Swap</div> */}
+        {/* <div className="swapButton" disabled={!inputTokenAmount || !isConnected} onClick={fetchDexSwap}>Swap</div> */}
         <div className="swapButton">Swap</div>
       </div>
       </Container>
