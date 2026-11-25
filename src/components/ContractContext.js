@@ -46,6 +46,11 @@ export function ContractsProvider({ children })  {
     await loadAccount(dispatch)
     })
 
+    if (!config[chainId]) {
+        window.alert(`Unsupported network (chain ID ${chainId}). Connect to the local Hardhat network (31337).`)
+        return {}
+    }
+
     const contractInstances = {
         aggregator: new ethers.Contract(config[chainId].aggregator.address, AGGREGATOR_ABI, provider),
         dai: new ethers.Contract(config[chainId].weth.address, DAI_ABI, provider),

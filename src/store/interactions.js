@@ -95,7 +95,9 @@ export const loadTokens = async (erc20s, dispatch) => {
      let transaction
      const signer = await provider.getSigner()
 
-     transaction = await contracts.dai.connect(signer).approve(contracts.aggregator.getAddress(), amount)
+     // Approve the token being sold, which is the first hop of the path
+     const inputToken = new ethers.Contract(path[0], contracts.dai.interface, signer)
+     transaction = await inputToken.approve(await contracts.aggregator.getAddress(), amount)
      await transaction.wait()
 
      transaction = await contracts.aggregator.connect(signer)

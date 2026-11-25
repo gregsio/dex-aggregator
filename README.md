@@ -1,75 +1,88 @@
-# Dex Aggregator for Uniswap Forks
+# DEX Aggregator for Uniswap V2 Forks
 
-An easy-to-use DEX aggregator that interacts with various Uniswap forks. Find the best trading rates and liquidity, and maximize your DeFi experience.
+[![CI](https://github.com/gregsio/dex-aggregator/actions/workflows/ci.yml/badge.svg)](https://github.com/gregsio/dex-aggregator/actions/workflows/ci.yml)
 
-## Table of Contents
+A learning project: a small Solidity contract that picks the best price for a token swap across a
+whitelist of Uniswap V2-compatible routers (Uniswap V2 and Sushiswap), plus a React front end to
+quote and execute swaps from a browser wallet.
 
-- [Features](#features)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Supported DEXes](#supported-dexes)
-- [Contributing](#contributing)
-- [License](#license)
-- [Acknowledgements](#acknowledgements)
+The contract is unaudited. Do not use it with mainnet funds.
 
-## Features
+## How it works
 
-- **Best Rate Discovery:** Automatically discover the best rates across multiple DEXes.
-- **Low Slippage:** Our system minimizes trade slippage by splitting trades across multiple liquidity pools.
-- **Gas Efficiency:** Optimized contract calls ensure you save on gas costs.
-- **Easy Integration:** Designed to be integrated with dApps, wallets, and other platforms.
+`contracts/Aggregator.sol` is deployed with a fixed list of router addresses and exposes two functions:
 
-## Prerequisites
+- **Quote** (`getBestAmountsOutOnUniswapForks`): a view call that asks each whitelisted router what
+  a given input amount would return along a token path, and returns the highest output amount
+  together with the router that offered it.
+- **Swap** (`swapOnUniswapFork`): pulls the input tokens from the caller, approves the chosen
+  whitelisted router and performs an exact-input swap through it. The caller supplies the expected
+  output, a maximum slippage and a deadline; the swap reverts if the output falls below that bound.
+  Output tokens go straight to the caller.
 
-- Node.js version `14.x` or higher
-- Ethereum wallet with some ETH for transaction fees
+The front end calls the quote function, shows the best router and amount, and submits the swap to
+that router.
 
-## Installation
+## Quick start
 
-1. Clone the repository:
-2. Navigate to the project directory
-3. Install the required dependencies:
-**
+Requires Node.js 20 (see `.nvmrc`) and npm.
+
+```sh
+git clone https://github.com/gregsio/dex-aggregator.git
+cd dex-aggregator
 npm install
-**
+npx hardhat compile
+npx hardhat test
+```
 
-## Usage
+The unit tests run against mock contracts and need no network access or API key.
 
-1. Update the `.env` file with your Ethereum gateway provider's API key.
+### Mainnet-fork tests (optional)
 
-2. Start the application: npm run start
+Fork tests exercise the contract against the real Uniswap and Sushiswap routers. They are skipped
+unless an Alchemy key is available:
 
-3. Interact with the platform via the provided web interface or API endpoints.
+```sh
+cp .env.example .env    # then set ALCHEMY_API_KEY
+npx hardhat test
+```
 
-## Supported DEXes
+### Running the app locally
 
-- Uniswap V2
-- Sushiswap
-- Mode DEXs to come...
+The deploy and seed scripts use mainnet router and token addresses, so the local node must fork
+mainnet (`ALCHEMY_API_KEY` set in `.env`).
 
-Want to add support for another DEX? Check the [contributing guidelines](#contributing).
+```sh
+npx hardhat node                                         # terminal 1: local forked chain
+npx hardhat run scripts/deploy.js --network localhost    # terminal 2: deploy the aggregator
+npx hardhat run scripts/seed.js --network localhost      # fund the first account with WETH and DAI
+npm run start                                            # front end on http://localhost:3000
+```
 
-## Contributing
+`deploy.js` prints the deployed address. If it differs from the `31337` entry in `src/config.json`,
+update that entry. Then point the browser wallet at the local network (chain ID 31337) and import
+the first Hardhat account.
 
-We welcome contributions to improve this aggregator. Please follow the steps below:
+## Project layout
 
-1. Fork the repository.
-2. Create a new branch (`git checkout -b feature/YourFeature`).
-3. Commit your changes (`git commit -am 'Add some feature'`).
-4. Push to the branch (`git push origin feature/YourFeature`).
-5. Open a new Pull Request.
+```
+contracts/     Aggregator.sol
+test/          Hardhat tests
+scripts/       deploy.js (deploys with the Uniswap V2 and Sushiswap routers), seed.js (funds a local account)
+config.json    Router and factory addresses used by scripts and tests
+src/           React front end: components/, Redux store/, contract ABIs, per-chain config.json
+```
 
+## Limitations and possible next steps
+
+- A swap executes on a single router. There is no split routing across pools or routers.
+- Only Uniswap V2-style routers are supported; no V3, Curve or Balancer pools.
+- The caller chooses the token path. The contract compares routers for that path and does no path finding.
+- Quoting makes one external call per whitelisted router, so cost grows linearly with the list.
+- The router whitelist is set at deployment and cannot be changed afterwards.
+- Quotes are spot values from pool reserves. A swap sent to the public mempool can still be
+  sandwiched within its slippage bound.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](./LICENSE.md) file for details.
-
-## Acknowledgements
-
-- Thanks to all the Uniswap forks for creating such versatile platforms.
-- The Ethereum community for invaluable tools and resources.
-
----
-
-Happy trading! If you have any issues, please [raise an issue](https://github.com/gregsio/dex-aggregator/issues)
+MIT. See [LICENSE.md](./LICENSE.md).

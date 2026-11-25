@@ -14,8 +14,7 @@ async function main() {
           config.UNISWAP.V2_ROUTER_02_ADDRESS,
           config.SUSHISWAP.V2_ROUTER_02_ADDRESS,
        //   config.SMARTDEX.V2_ROUTER_02_ADDRESS
-        ],
-        2
+        ]
       ])
 
     await aggregator.waitForDeployment()

@@ -5,11 +5,6 @@
         "internalType": "address[]",
         "name": "_routers",
         "type": "address[]"
-      },
-      {
-        "internalType": "uint16",
-        "name": "_defaultSlippagePercent",
-        "type": "uint16"
       }
     ],
     "stateMutability": "nonpayable",
@@ -19,7 +14,7 @@
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
+        "indexed": true,
         "internalType": "address",
         "name": "router",
         "type": "address"
@@ -27,17 +22,23 @@
       {
         "indexed": false,
         "internalType": "address[]",
-        "name": "_path",
+        "name": "path",
         "type": "address[]"
       },
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "amount_from",
+        "name": "amountIn",
         "type": "uint256"
       },
       {
         "indexed": false,
+        "internalType": "uint256",
+        "name": "amountOut",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
         "internalType": "address",
         "name": "to",
         "type": "address"
@@ -45,6 +46,19 @@
     ],
     "name": "Swap",
     "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "MAX_BPS",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
   },
   {
     "inputs": [
@@ -76,13 +90,19 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "owner",
-    "outputs": [
+    "inputs": [
       {
         "internalType": "address",
         "name": "",
         "type": "address"
+      }
+    ],
+    "name": "isWhiteListedRouter",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -107,17 +127,17 @@
       },
       {
         "internalType": "uint256",
-        "name": "_minAmountOutBeforeSlippage",
+        "name": "_expectedAmountOut",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "_maxSlippagePercent",
+        "name": "_maxSlippageBps",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "deadline",
+        "name": "_deadline",
         "type": "uint256"
       }
     ],

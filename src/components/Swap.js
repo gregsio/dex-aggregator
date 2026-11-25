@@ -58,6 +58,12 @@ const Swap = () => {
 
     // const _inputAmount = ethers.parseUnits(inputAmount, 'ether')
 
+    // The aggregator returns a zero quote and router when no pool exists for the pair
+    if (!bestDeal || router === ethers.ZeroAddress) {
+      window.alert("No route found for this pair");
+      return;
+    }
+
     const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
     const slippage = 0;
 
